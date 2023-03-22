@@ -15,17 +15,32 @@
 Reset:
     INIT_NES
 
-    lda #%00000001
-    sta APU_FLAGS ;enable Square 1
-    
-    ;square 1
-    lda #%10111111 ;Duty 10, Length Counter Disabled, Saw Envelopes disabled, Volume F
+    lda #%00000111  ;enable Sq1, Sq2 and Tri channels
+    sta APU_FLAGS
+ 
+    ;Square 1
+    lda #%00111000  ;Duty 00, Volume 8 (half volume)
     sta SQ1_ENV
-    
-    lda #$C9    ;0C9 is a C# in NTSC mode
-    sta SQ1_LO  ;low 8 bits of period
+    lda #$C9        ;$0C9 is a C# in NTSC mode
+    sta SQ1_LO      ;low 8 bits of period
     lda #$00
-    sta SQ1_HI  ;high 3 bits of period
+    sta SQ1_HI      ;high 3 bits of period
+ 
+    ;Square 2
+    lda #%01110110  ;Duty 01, Volume 6
+    sta SQ2_ENV
+    lda #$A9        ;$0A9 is an E in NTSC mode
+    sta SQ2_LO
+    lda #$00
+    sta SQ2_HI
+ 
+    ;Triangle
+    lda #%10000001  ;Triangle channel on
+    sta TRI_CTRL
+    lda #$42        ;$042 is a G# in NTSC mode
+    sta TRI_LO
+    lda #$00
+    sta TRI_HI
 
 LoopForever:
     jmp LoopForever          ; Force an infinite execution loop
