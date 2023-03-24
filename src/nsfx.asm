@@ -2,8 +2,8 @@
 
 .segment "ZEROPAGE"
 nsfx_disable_flag:     .res 1   ;a flag variable that keeps track of whether the sound engine is disabled or not. 
+nsfx_playing_flag:     .res 1   ;a flag that tells us if our sound is playing or not.
 nsfx_frame_counter:    .res 1   ;a primitive counter used to time notes in this demo
-nsfx_playing:          .res 1   ;a flag that tells us if our sound is playing or not.
 nsfx_index:            .res 1   ;our current position in the sound data.
 
 .segment "CODE"
@@ -26,7 +26,7 @@ nsfx_index:            .res 1   ;our current position in the sound data.
     lda #$00
     sta nsfx_disable_flag  ;clear disable flag
     ;later, if we have other variables we want to initialize, we will do that here.
-    sta nsfx_playing
+    sta nsfx_playing_flag
     sta nsfx_index
     sta nsfx_frame_counter
     rts
@@ -42,7 +42,7 @@ nsfx_index:            .res 1   ;our current position in the sound data.
 
 .proc nsfx_load
     lda #$01
-    sta nsfx_playing         ;set playing flag
+    sta nsfx_playing_flag         ;set playing flag
     lda #$00
     sta nsfx_index           ;reset the index and counter
     sta nsfx_frame_counter
@@ -51,13 +51,13 @@ nsfx_index:            .res 1   ;our current position in the sound data.
 
 .proc nsfx_pause
     lda #$00
-    sta nsfx_playing
+    sta nsfx_playing_flag
     rts
 .endproc
 
 .proc nsfx_unpause
     lda #$01
-    sta nsfx_playing
+    sta nsfx_playing_flag
     rts
 .endproc
 
@@ -65,7 +65,7 @@ nsfx_index:            .res 1   ;our current position in the sound data.
     lda nsfx_disable_flag
     bne @done   ;if disable flag is set, don't advance a frame
     
-    lda nsfx_playing
+    lda nsfx_playing_flag
     beq @done  ;if our sound isn't playing, don't advance a frame
     
     inc nsfx_frame_counter     
@@ -84,7 +84,7 @@ nsfx_index:            .res 1   ;our current position in the sound data.
     lda #%00110000    ;else if #$FF, we are at the end of the sound data, so stop the sound and return
     sta SQ1_ENV
     lda #$00
-    sta nsfx_playing
+    sta nsfx_playing_flag
     sta nsfx_frame_counter
     rts
 @note:          
