@@ -49,6 +49,18 @@ nsfx_index:            .res 1   ;our current position in the sound data.
     rts
 .endproc
 
+.proc nsfx_pause
+    lda #$00
+    sta nsfx_playing
+    rts
+.endproc
+
+.proc nsfx_unpause
+    lda #$01
+    sta nsfx_playing
+    rts
+.endproc
+
 .proc nsfx_play_frame
     lda nsfx_disable_flag
     bne @done   ;if disable flag is set, don't advance a frame
