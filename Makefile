@@ -1,6 +1,6 @@
-TARGET=nsfx.nes
+TARGET=demo.nes
 CFG=cfg/nes.cfg
-OBJS=src/main.o
+OBJS=src/demo.o src/nsfx.o
 ASM=ca65
 LD=ld65
 LDFLAGS=-C $(CFG) 

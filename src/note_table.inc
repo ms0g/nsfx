@@ -13,7 +13,7 @@ NoteTable:
     
 
 ;Note: octaves in music traditionally start at C, not A    
-A1  = $00    ;the "1" means Octave 1
+A1  = $00   ;the "1" means Octave 1
 As1 = $01   ;the "s" means "sharp"
 Bb1 = $01   ;the "b" means "flat"  A# == Bb, so same value
 B1  = $02
