@@ -13,6 +13,7 @@ PPU_DATA    = $2007
 ;; Constants for APU registers mapped from addresses $4000 to $4017
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 SQ1_ENV     = $4000
+SQ1_SWEEP   = $4001
 SQ1_LO      = $4002
 SQ1_HI      = $4003
 SQ2_ENV     = $4004
