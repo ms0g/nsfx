@@ -22,5 +22,6 @@ SQ2_HI      = $4007
 TRI_CTRL    = $4008
 TRI_LO      = $400A
 TRI_HI      = $400B
+NOISE_ENV   = $400C
 APU_FLAGS   = $4015
 
