@@ -1,15 +1,16 @@
 TARGET=demo.nes
 CFG=cfg/nes.cfg
-OBJS=src/demo.o src/nsfx.o
+OBJS=demo.o engine/nsfx.o
 ASM=ca65
 LD=ld65
 LDFLAGS=-C $(CFG) 
 
-src/%.o : src/%.asm 
+%.o : %.asm
 	$(ASM) $<
+
 $(TARGET): $(OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@ 
 
 .PHONY: clean
 clean:
-	rm -f $(TARGET) $(OBJS)
+	rm -f $(TARGET) $(OBJS) *.fdb
