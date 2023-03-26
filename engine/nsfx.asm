@@ -1,23 +1,12 @@
 .include "apu.inc"
-
-SQUARE_1 = $00 ;these are channel constants
-SQUARE_2 = $01
-TRIANGLE = $02
-NOISE = $03
-
-MUSIC_SQ1 = $00 ;these are stream # constants
-MUSIC_SQ2 = $01 ;stream # is used to index into variables
-MUSIC_TRI = $02
-MUSIC_NOI = $03
-SFX_1     = $04
-SFX_2     = $05
+.include "consts.inc"
 
 .segment "ZEROPAGE"
 nsfx_disable_flag:      .res 1   ;a flag variable that keeps track of whether the sound engine is disabled or not. 
 nsfx_playing_flag:      .res 1   ;a flag that tells us if our sound is playing or not.
 nsfx_frame_counter:     .res 1   ;a primitive counter used to time notes in this demo
-sound_temp1:            .res 1   ;temporary variables
-sound_temp2:            .res 1
+nsfx_temp1:             .res 1   ;temporary variables
+nsfx_temp2:             .res 1
 sound_ptr:              .res 2
 
 ;reserve 6 bytes, one for each stream
@@ -41,18 +30,18 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_init
     lda #%00001111
-    sta APU_FLAGS   ;enable Square 1, Square 2, Triangle and Noise channels
+    sta APU_FLAGS           ;enable Square 1, Square 2, Triangle and Noise channels
     
     lda #$30
-    sta SQ1_ENV     ;set Square 1 volume to 0
-    sta SQ2_ENV     ;set Square 2 volume to 0
-    sta NOISE_ENV   ;set Noise volume to 0
+    sta SQ1_ENV             ;set Square 1 volume to 0
+    sta SQ2_ENV             ;set Square 2 volume to 0
+    sta NOISE_ENV           ;set Noise volume to 0
     lda #$80
-    sta TRI_CTRL    ;silence Triangle
+    sta TRI_CTRL            ;silence Triangle
     
     lda #$00
-    sta nsfx_disable_flag  ;clear disable flag
-    ;later, if we have other variables we want to initialize, we will do that here.
+    sta nsfx_disable_flag   ;clear disable flag
+
     sta nsfx_playing_flag
     sta nsfx_frame_counter
     rts
@@ -65,7 +54,7 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
     lda #$00
     sta APU_FLAGS           ;disable all channels
     lda #$01
-    sta nsfx_disable_flag  ;set disable flag
+    sta nsfx_disable_flag   ;set disable flag
     rts
 .endproc
 
@@ -89,39 +78,39 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_load
     ldy #$01
-    sty nsfx_playing_flag         ;set playing flag
+    sty nsfx_playing_flag       ;set playing flag
 
-    sta sound_temp1         ;save song number
-    asl a                   ;multiply by 2.  We are indexing into a table of pointers (words)
+    sta nsfx_temp1              ;save song number
+    asl a                       ;multiply by 2.  We are indexing into a table of pointers (words)
     tay
-    lda song_headers, y     ;setup the pointer to our song header
+    lda song_headers, y         ;setup the pointer to our song header
     sta sound_ptr
     lda song_headers+1, y
     sta sound_ptr+1
 
     ldy #$00
-    lda (sound_ptr), y      ;read the first byte: # streams
-    sta sound_temp2         ;store in a temp variable.  We will use this as a loop counter: how many streams to read stream headers for
+    lda (sound_ptr), y          ;stream counter
+    sta nsfx_temp2              
     iny
 @loop:
-    lda (sound_ptr), y      ;stream number
-    tax                     ;stream number acts as our variable index
+    lda (sound_ptr), y          ;stream number
+    tax                         ;stream number acts as our variable index
     iny
     
-    lda (sound_ptr), y      ;status byte.  1= enable, 0=disable
+    lda (sound_ptr), y          ;status byte. 1= enable, 0=disable
     sta stream_status, x
-    beq @next_stream        ;if status byte is 0, stream disabled, so we are done
+    beq @next_stream            ;if status byte is 0, stream disabled, so we are done
     iny
     
-    lda (sound_ptr), y      ;channel number
+    lda (sound_ptr), y          ;channel number
     sta stream_channel, x
     iny
     
-    lda (sound_ptr), y      ;initial duty and volume settings
+    lda (sound_ptr), y          ;initial duty and volume settings
     sta stream_vol_duty, x
     iny
     
-    lda (sound_ptr), y      ;pointer to stream data.  Little endian, so low byte first
+    lda (sound_ptr), y          ;pointer to stream data. Little endian, so low byte first
     sta stream_ptr_LO, x
     iny
     
@@ -130,10 +119,10 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 @next_stream:
     iny
     
-    lda sound_temp1         ;song number
+    lda nsfx_temp1              ;song number
     sta stream_curr_sound, x
     
-    dec sound_temp2         ;our loop counter
+    dec nsfx_temp2              ;our loop counter
     bne @loop
 
     rts
@@ -163,25 +152,25 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_play_frame
     lda nsfx_disable_flag
-    bne @done   ;if disable flag is set, don't advance a frame
+    bne @done               ;if disable flag is set, don't advance a frame
     
     lda nsfx_playing_flag
-    beq @done  ;if our sound isn't playing, don't advance a frame
+    beq @done               ;if our sound isn't playing, don't advance a frame
     
     inc nsfx_frame_counter     
     lda nsfx_frame_counter
-    cmp #$0C    ;***change this compare value to make the notes play faster or slower***
-    bne @done   ;only take action once every 8 frames.
+    cmp #$0C                ;***change this compare value to make the notes play faster or slower***
+    bne @done               ;only take action once every 8 frames.
     
-    ;silence all channels.  se_set_apu will set volume later for all channels that are enabled.
+    ;silence all channels.  nsfx_set_apu will set volume later for all channels that are enabled.
     ;the purpose of this subroutine call is to silence channels that aren't used by any streams.
     jsr nsfx_mute
 
     ldx #$00
 @loop:
     lda stream_status, x
-    and #$01    ;check whether the stream is active
-    beq @endloop  ;if the channel isn't active, skip it
+    and #$01                ;check whether the stream is active
+    beq @endloop            ;if the channel isn't active, skip it
     jsr nsfx_fetch_byte
     jsr nsfx_set_apu
 @endloop:
@@ -209,10 +198,10 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 
     ldy #$00
     lda (sound_ptr), y
-    bpl @note                ;if < #$80, it's a Note
+    bpl @note               ;if < #$80, it's a Note
     cmp #$A0
-    bcc @note_length         ;else if < #$A0, it's a Note Length
-@opcode:                     ;else it's an opcode
+    bcc @note_length        ;else if < #$A0, it's a Note Length
+@opcode:                    ;else it's an opcode
     ;do Opcode stuff
     cmp #$FF
     bne @end
@@ -232,17 +221,17 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
     jmp @update_pointer     ;done
 @note_length:
     ;do Note Length stuff
-    jmp @update_pointer    ;not implemented yet
+    jmp @update_pointer     ;not implemented yet
 @note:
     ;do Note stuff
-    sty sound_temp1     ;save our index into the data stream
+    sty nsfx_temp1          ;save our index into the data stream
     asl a
     tay
     lda NoteTable, y
     sta stream_note_LO, x
     lda NoteTable+1, y
     sta stream_note_HI, x
-    ldy sound_temp1     ;restore data stream index
+    ldy nsfx_temp1          ;restore data stream index
 @update_pointer:
     iny
     tya
@@ -262,9 +251,30 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 ;   X: stream number
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_set_apu
- lda stream_channel, x
+    lda stream_channel, x
+    ;multiply by 4 so our index will point to the right set of registers
+    ;If our stream_channel is $00 (SQUARE_1), we multiply by 4 to get $00.  y = 0
+    ;    $4000, y = $4000  
+    ;    $4001, y = $4001 
+    ;    $4002, y = $4002 
+    ;    $4003, y = $4003
+    ;If our stream_channel is $01 (SQUARE_2), we multiply by 4 to get $04.  y = 4
+    ;    $4000, y = $4004  
+    ;    $4001, y = $4005  
+    ;    $4002, y = $4006
+    ;    $4003, y = $4007 
+    ;If our stream_channel is $02 (TRIANGLE), we multiply by 4 to get $08.  y = 8
+    ;    $4000, y = $4008  
+    ;    $4001, y = $4009 (unused)  
+    ;    $4002, y = $400A 
+    ;    $4003, y = $400B
+    ;If our stream_channel is $03 (NOISE), we multiply by 4 to get $0C.  y = C
+    ;    $4000, y = $400C  
+    ;    $4001, y = $400D  
+    ;    $4002, y = $400E
+    ;    $4003, y = $400F
     asl a
-    asl a                   ;multiply by 4 so our index will point to the right set of registers
+    asl a                   
     tay
     lda stream_vol_duty, x
     sta SQ1_ENV, y
@@ -275,12 +285,13 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
     
     lda stream_channel, x
     cmp #TRIANGLE
-    bcs @end        ;if Triangle or Noise, skip this part
-    lda #$08        ;else, set negate flag in sweep unit to allow low noteson Squares
+    bcs @end                ;if Triangle or Noise, skip this part
+    lda #$08                ;else, set negate flag in sweep unit to allow low noteson Squares
     sta SQ1_SWEEP, y
 @end:
     rts
 .endproc
+
 
 NUM_SONGS = $04 ;if you add a new song, change this number.    
                 ;headers.asm checks this number in its song_up and song_down subroutines
@@ -294,7 +305,7 @@ song_headers:
     .word song3_header  ;a little chord progression.
 
 .include "note_table.inc"
-.include "song0.i"  ;holds the data for song 0 (header and data streams)
-.include "song1.i"  ;holds the data for song 1
-.include "song2.i"
-.include "song3.i"
+.include "song0.s"  ;holds the data for song 0 (header and data streams)
+.include "song1.s"  ;holds the data for song 1
+.include "song2.s"
+.include "song3.s"
