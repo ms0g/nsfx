@@ -1,4 +1,4 @@
-.include "engine/consts.inc"
+.include "engine/ppu.inc"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The iNES header (contains a total of 16 bytes with the flags at $7F00)

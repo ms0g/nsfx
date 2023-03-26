@@ -1,4 +1,4 @@
-.include "consts.inc"
+.include "apu.inc"
 
 .segment "ZEROPAGE"
 nsfx_disable_flag:     .res 1   ;a flag variable that keeps track of whether the sound engine is disabled or not. 
