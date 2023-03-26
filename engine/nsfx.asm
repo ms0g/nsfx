@@ -191,7 +191,6 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
     bne @loop
 
     lda #$00
-    sta nsfx_playing_flag
     sta nsfx_frame_counter
 @done:
     rts
