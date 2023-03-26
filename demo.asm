@@ -15,7 +15,7 @@
 .byte $00,$00,$00,$00,$00    ; Unused padding to complete 16 bytes of header
 
 .segment "ZEROPAGE"
-
+current_song:   .res 1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PRG-ROM code located at $8000
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -66,11 +66,14 @@ Wait2ndVBlank:               ; Wait for the second VBlank from the PPU
 
 Main:
     jsr nsfx_init
+    
+    lda #$03
+    sta current_song
+    
     jsr nsfx_load
 
     lda #%10010000           ; Enable NMI and set background to use the 2nd pattern table (at $1000)
     sta PPU_CTRL
-
 
 LoopForever:
     jmp LoopForever          ; Force an infinite execution loop
