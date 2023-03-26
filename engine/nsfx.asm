@@ -16,8 +16,7 @@ SFX_2     = $05
 nsfx_disable_flag:      .res 1   ;a flag variable that keeps track of whether the sound engine is disabled or not. 
 nsfx_playing_flag:      .res 1   ;a flag that tells us if our sound is playing or not.
 nsfx_frame_counter:     .res 1   ;a primitive counter used to time notes in this demo
-nsfx_index:             .res 1   ;our current position in the sound data.
-sound_temp1:            .res 1           ;temporary variables
+sound_temp1:            .res 1   ;temporary variables
 sound_temp2:            .res 1
 sound_ptr:              .res 2
 
