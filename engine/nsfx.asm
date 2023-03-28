@@ -32,11 +32,11 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
     lda #%00001111
     sta APU_FLAGS           ;enable Square 1, Square 2, Triangle and Noise channels
     
-    lda #$30
+    lda #%00110000
     sta SQ1_ENV             ;set Square 1 volume to 0
     sta SQ2_ENV             ;set Square 2 volume to 0
     sta NOISE_ENV           ;set Noise volume to 0
-    lda #$80
+    lda #%10000000
     sta TRI_CTRL            ;silence Triangle
     
     lda #$00
@@ -62,11 +62,11 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 ; NSFX_MUTE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_mute
-    lda #$30
+    lda #%00110000
     sta SQ1_ENV     ;set Square 1 volume to 0
     sta SQ2_ENV     ;set Square 2 volume to 0
     sta NOISE_ENV   ;set Noise volume to 0
-    lda #$80
+    lda #%10000000
     sta TRI_CTRL    ;silence Triangle
     rts
 .endproc 
@@ -212,10 +212,10 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
     lda stream_channel, x
     cmp #TRIANGLE
     beq @silence_tri        ;triangle is silenced differently from squares and noise
-    lda #$30                ;squares and noise silenced with #$30
+    lda #%00110000          ;squares and noise silenced with #$30
     bne @silence
 @silence_tri:
-    lda #$80                ;triangle silenced with #$80
+    lda #%10000000          ;triangle silenced with #$80
 @silence:
     sta stream_vol_duty, x  ;store silence value in the stream's volume variable.
     jmp @update_pointer     ;done
@@ -252,27 +252,6 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_set_apu
     lda stream_channel, x
-    ;multiply by 4 so our index will point to the right set of registers
-    ;If our stream_channel is $00 (SQUARE_1), we multiply by 4 to get $00.  y = 0
-    ;    $4000, y = $4000  
-    ;    $4001, y = $4001 
-    ;    $4002, y = $4002 
-    ;    $4003, y = $4003
-    ;If our stream_channel is $01 (SQUARE_2), we multiply by 4 to get $04.  y = 4
-    ;    $4000, y = $4004  
-    ;    $4001, y = $4005  
-    ;    $4002, y = $4006
-    ;    $4003, y = $4007 
-    ;If our stream_channel is $02 (TRIANGLE), we multiply by 4 to get $08.  y = 8
-    ;    $4000, y = $4008  
-    ;    $4001, y = $4009 (unused)  
-    ;    $4002, y = $400A 
-    ;    $4003, y = $400B
-    ;If our stream_channel is $03 (NOISE), we multiply by 4 to get $0C.  y = C
-    ;    $4000, y = $400C  
-    ;    $4001, y = $400D  
-    ;    $4002, y = $400E
-    ;    $4003, y = $400F
     asl a
     asl a                   
     tay
@@ -286,7 +265,7 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
     lda stream_channel, x
     cmp #TRIANGLE
     bcs @end                ;if Triangle or Noise, skip this part
-    lda #$08                ;else, set negate flag in sweep unit to allow low noteson Squares
+    lda #%00001000          ;else, set negate flag in sweep unit to allow low noteson Squares
     sta SQ1_SWEEP, y
 @end:
     rts
