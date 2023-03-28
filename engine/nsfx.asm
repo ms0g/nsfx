@@ -2,22 +2,22 @@
 .include "consts.inc"
 
 .segment "ZEROPAGE"
-nsfx_disable_flag:      .res 1   ;a flag variable that keeps track of whether the sound engine is disabled or not. 
-nsfx_playing_flag:      .res 1   ;a flag that tells us if our sound is playing or not.
-nsfx_frame_counter:     .res 1   ;a primitive counter used to time notes in this demo
-nsfx_temp1:             .res 1   ;temporary variables
+nsfx_disable_flag:      .res 1  ;a flag variable that keeps track of whether the sound engine is disabled or not. 
+nsfx_playing_flag:      .res 1  ;a flag that tells us if our sound is playing or not.
+nsfx_frame_counter:     .res 1  ;a primitive counter used to time notes in this demo
+nsfx_temp1:             .res 1  ;temporary variables
 nsfx_temp2:             .res 1
 sound_ptr:              .res 2
 
 ;reserve 6 bytes, one for each stream
-stream_curr_sound:      .res 6     ;current song/sfx loaded
-stream_status:          .res 6         ;status byte.   bit0: (1: stream enabled; 0: stream disabled)
-stream_channel:         .res 6        ;what channel is this stream playing on?
-stream_ptr_LO:          .res 6         ;low byte of pointer to data stream
-stream_ptr_HI:          .res 6         ;high byte of pointer to data stream
-stream_vol_duty:        .res 6       ;stream volume/duty settings
-stream_note_LO:         .res 6        ;low 8 bits of period for the current note on a stream
-stream_note_HI:         .res 6        ;high 3 bits of period for the current note on a stream 
+stream_curr_sound:      .res 6  ;current song/sfx loaded
+stream_status:          .res 6  ;status byte.   bit0: (1: stream enabled; 0: stream disabled)
+stream_channel:         .res 6  ;what channel is this stream playing on?
+stream_ptr_LO:          .res 6  ;low byte of pointer to data stream
+stream_ptr_HI:          .res 6  ;high byte of pointer to data stream
+stream_vol_duty:        .res 6  ;stream volume/duty settings
+stream_note_LO:         .res 6  ;low 8 bits of period for the current note on a stream
+stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a stream 
 
 .segment "CODE"
 .export nsfx_init
@@ -30,17 +30,17 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_init
     lda #%00001111
-    sta APU_FLAGS           ;enable Square 1, Square 2, Triangle and Noise channels
+    sta APU_FLAGS               ;enable Square 1, Square 2, Triangle and Noise channels
     
     lda #%00110000
-    sta SQ1_ENV             ;set Square 1 volume to 0
-    sta SQ2_ENV             ;set Square 2 volume to 0
-    sta NOISE_ENV           ;set Noise volume to 0
+    sta SQ1_ENV                 ;set Square 1 volume to 0
+    sta SQ2_ENV                 ;set Square 2 volume to 0
+    sta NOISE_ENV               ;set Noise volume to 0
     lda #%10000000
-    sta TRI_CTRL            ;silence Triangle
+    sta TRI_CTRL                ;silence Triangle
     
     lda #$00
-    sta nsfx_disable_flag   ;clear disable flag
+    sta nsfx_disable_flag       ;clear disable flag
 
     sta nsfx_playing_flag
     sta nsfx_frame_counter
@@ -52,9 +52,9 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_disable
     lda #$00
-    sta APU_FLAGS           ;disable all channels
+    sta APU_FLAGS               ;disable all channels
     lda #$01
-    sta nsfx_disable_flag   ;set disable flag
+    sta nsfx_disable_flag       ;set disable flag
     rts
 .endproc
 
@@ -63,11 +63,11 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_mute
     lda #%00110000
-    sta SQ1_ENV     ;set Square 1 volume to 0
-    sta SQ2_ENV     ;set Square 2 volume to 0
-    sta NOISE_ENV   ;set Noise volume to 0
+    sta SQ1_ENV                 ;set Square 1 volume to 0
+    sta SQ2_ENV                 ;set Square 2 volume to 0
+    sta NOISE_ENV               ;set Noise volume to 0
     lda #%10000000
-    sta TRI_CTRL    ;silence Triangle
+    sta TRI_CTRL                ;silence Triangle
     rts
 .endproc 
 
@@ -152,25 +152,23 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_play_frame
     lda nsfx_disable_flag
-    bne @done               ;if disable flag is set, don't advance a frame
+    bne @done                   ;if disable flag is set, don't advance a frame
     
     lda nsfx_playing_flag
-    beq @done               ;if our sound isn't playing, don't advance a frame
+    beq @done                   ;if our sound isn't playing, don't advance a frame
     
     inc nsfx_frame_counter     
     lda nsfx_frame_counter
-    cmp #$0C                ;***change this compare value to make the notes play faster or slower***
-    bne @done               ;only take action once every 8 frames.
+    cmp #$0C                    ;***change this compare value to make the notes play faster or slower***
+    bne @done                   ;only take action once every 8 frames.
     
-    ;silence all channels.  nsfx_set_apu will set volume later for all channels that are enabled.
-    ;the purpose of this subroutine call is to silence channels that aren't used by any streams.
-    jsr nsfx_mute
+    jsr nsfx_mute               ;silence all channels.the purpose of this subroutine call is to silence channels that aren't used by any streams.
 
     ldx #$00
 @loop:
     lda stream_status, x
-    and #$01                ;check whether the stream is active
-    beq @endloop            ;if the channel isn't active, skip it
+    and #$01                    ;check whether the stream is active
+    beq @endloop                ;if the channel isn't active, skip it
     jsr nsfx_fetch_byte
     jsr nsfx_set_apu
 @endloop:
@@ -198,40 +196,40 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
 
     ldy #$00
     lda (sound_ptr), y
-    bpl @note               ;if < #$80, it's a Note
+    bpl @note                   ;if < #$80, it's a Note
     cmp #$A0
-    bcc @note_length        ;else if < #$A0, it's a Note Length
-@opcode:                    ;else it's an opcode
+    bcc @note_length            ;else if < #$A0, it's a Note Length
+@opcode:                        ;else it's an opcode
     ;do Opcode stuff
     cmp #$FF
     bne @end
-    lda stream_status, x    ;if $FF, end of stream, so disable it and silence
+    lda stream_status, x        ;if $FF, end of stream, so disable it and silence
     and #%11111110
-    sta stream_status, x    ;clear enable flag in status byte
+    sta stream_status, x        ;clear enable flag in status byte
     
     lda stream_channel, x
     cmp #TRIANGLE
-    beq @silence_tri        ;triangle is silenced differently from squares and noise
-    lda #%00110000          ;squares and noise silenced with #$30
+    beq @silence_tri            ;triangle is silenced differently from squares and noise
+    lda #%00110000              ;squares and noise silenced with #$30
     bne @silence
 @silence_tri:
-    lda #%10000000          ;triangle silenced with #$80
+    lda #%10000000              ;triangle silenced with #$80
 @silence:
-    sta stream_vol_duty, x  ;store silence value in the stream's volume variable.
-    jmp @update_pointer     ;done
+    sta stream_vol_duty, x      ;store silence value in the stream's volume variable.
+    jmp @update_pointer         ;done
 @note_length:
     ;do Note Length stuff
-    jmp @update_pointer     ;not implemented yet
+    jmp @update_pointer
 @note:
     ;do Note stuff
-    sty nsfx_temp1          ;save our index into the data stream
+    sty nsfx_temp1              ;save our index into the data stream
     asl a
     tay
     lda NoteTable, y
     sta stream_note_LO, x
     lda NoteTable+1, y
     sta stream_note_HI, x
-    ldy nsfx_temp1          ;restore data stream index
+    ldy nsfx_temp1              ;restore data stream index
 @update_pointer:
     iny
     tya
@@ -264,27 +262,27 @@ stream_note_HI:         .res 6        ;high 3 bits of period for the current not
     
     lda stream_channel, x
     cmp #TRIANGLE
-    bcs @end                ;if Triangle or Noise, skip this part
-    lda #%00001000          ;else, set negate flag in sweep unit to allow low noteson Squares
+    bcs @end                    ;if Triangle or Noise, skip this part
+    lda #%00001000              ;else, set negate flag in sweep unit to allow low noteson Squares
     sta SQ1_SWEEP, y
 @end:
     rts
 .endproc
 
 
-NUM_SONGS = $04 ;if you add a new song, change this number.    
-                ;headers.asm checks this number in its song_up and song_down subroutines
-                ;to determine when to wrap around.
+NUM_SONGS = $04                 ;if you add a new song, change this number.    
+                                ;headers.asm checks this number in its song_up and song_down subroutines
+                                ;to determine when to wrap around.
 
-;this is our pointer table.  Each entry is a pointer to a song header                
-song_headers:
-    .word song0_header  ;this is a silence song.  See song0.i for more details
-    .word song1_header  ;evil, demented notes
-    .word song2_header  ;a sound effect.  Try playing it over the other songs.
-    .word song3_header  ;a little chord progression.
+               
+song_headers:                   ;this is our pointer table.  Each entry is a pointer to a song header 
+    .word song0_header          ;this is a silence song.  See song0.i for more details
+    .word song1_header          ;evil, demented notes
+    .word song2_header          ;a sound effect.  Try playing it over the other songs.
+    .word song3_header          ;a little chord progression.
 
 .include "note_table.inc"
-.include "song0.s"  ;holds the data for song 0 (header and data streams)
-.include "song1.s"  ;holds the data for song 1
+.include "song0.s"              ;holds the data for song 0 (header and data streams)
+.include "song1.s"              ;holds the data for song 1
 .include "song2.s"
 .include "song3.s"
