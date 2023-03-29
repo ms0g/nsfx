@@ -13,4 +13,6 @@ TRI_CTRL    = $4008
 TRI_LO      = $400A
 TRI_HI      = $400B
 NOISE_ENV   = $400C
+NOI_RAND    = $400E
+NOI_COUNT   = $400F
 APU_FLAGS   = $4015
