@@ -10,7 +10,7 @@ NoteTable:
     .word $0034, $0031, $002F, $002C, $0029, $0027, $0025, $0023, $0021, $001F, $001D, $001B ; C7-B7 ($3F-$4A)
     .word $001A, $0018, $0017, $0015, $0014, $0013, $0012, $0011, $0010, $000F, $000E, $000D ; C8-B8 ($4B-$56)
     .word $000C, $000C, $000B, $000A, $000A, $0009, $0008                                    ; C9-F#9 ($57-$5D)
-    
+    .word $0000 ;rest.  Last entry
 
 ;Note: octaves in music traditionally start at C, not A    
 A1  = $00   ;the "1" means Octave 1
@@ -154,3 +154,4 @@ E9  = $5b
 F9  = $5c
 Fs9 = $5d
 Gb9 = $5d
+rest = $5e

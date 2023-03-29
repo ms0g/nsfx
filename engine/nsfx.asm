@@ -2,12 +2,15 @@
 .include "consts.inc"
 
 .segment "ZEROPAGE"
+nsfx_apu_ports:         .res 16
 nsfx_disable_flag:      .res 1  ;a flag variable that keeps track of whether the sound engine is disabled or not. 
 nsfx_playing_flag:      .res 1  ;a flag that tells us if our sound is playing or not.
-nsfx_frame_counter:     .res 1  ;a primitive counter used to time notes in this demo
+nsfx_sq1_old:           .res 1  ;the last value written to $4003
+nsfx_sq2_old:           .res 1  ;the last value written to $4007
 nsfx_temp1:             .res 1  ;temporary variables
 nsfx_temp2:             .res 1
 sound_ptr:              .res 2
+
 
 ;reserve 6 bytes, one for each stream
 stream_curr_sound:      .res 6  ;current song/sfx loaded
@@ -18,6 +21,10 @@ stream_ptr_HI:          .res 6  ;high byte of pointer to data stream
 stream_vol_duty:        .res 6  ;stream volume/duty settings
 stream_note_LO:         .res 6  ;low 8 bits of period for the current note on a stream
 stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a stream 
+stream_tempo:           .res 6  ;the value to add to our ticker total each frame
+stream_ticker_total:    .res 6  ;our running ticker total
+stream_note_length:     .res 6  
+stream_note_length_counter: .res 6
 
 .segment "CODE"
 .export nsfx_init
@@ -32,18 +39,16 @@ stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a
     lda #%00001111
     sta APU_FLAGS               ;enable Square 1, Square 2, Triangle and Noise channels
     
-    lda #%00110000
-    sta SQ1_ENV                 ;set Square 1 volume to 0
-    sta SQ2_ENV                 ;set Square 2 volume to 0
-    sta NOISE_ENV               ;set Noise volume to 0
-    lda #%10000000
-    sta TRI_CTRL                ;silence Triangle
-    
     lda #$00
     sta nsfx_disable_flag       ;clear disable flag
-
     sta nsfx_playing_flag
-    sta nsfx_frame_counter
+
+    lda #$FF
+    sta nsfx_sq1_old
+    sta nsfx_sq2_old
+
+    jsr nsfx_mute
+    
     rts
 .endproc
 
@@ -62,12 +67,12 @@ stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a
 ; NSFX_MUTE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_mute
-    lda #%00110000
-    sta SQ1_ENV                 ;set Square 1 volume to 0
-    sta SQ2_ENV                 ;set Square 2 volume to 0
-    sta NOISE_ENV               ;set Noise volume to 0
-    lda #%10000000
-    sta TRI_CTRL                ;silence Triangle
+    lda #$30
+    sta nsfx_apu_ports      ;set Square 1 volume to 0
+    sta nsfx_apu_ports+4    ;set Square 2 volume to 0
+    sta nsfx_apu_ports+12   ;set Noise volume to 0
+    lda #$80
+    sta nsfx_apu_ports+8     ;silence Triangle
     rts
 .endproc 
 
@@ -116,6 +121,16 @@ stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a
     
     lda (sound_ptr), y
     sta stream_ptr_HI, x
+    iny
+
+    lda (sound_ptr), y
+    sta stream_tempo, x
+
+    lda #$A0
+    sta stream_ticker_total, x
+    
+    lda #$01
+    sta stream_note_length_counter,x
 @next_stream:
     iny
     
@@ -157,27 +172,38 @@ stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a
     lda nsfx_playing_flag
     beq @done                   ;if our sound isn't playing, don't advance a frame
     
-    inc nsfx_frame_counter     
-    lda nsfx_frame_counter
-    cmp #$0C                    ;***change this compare value to make the notes play faster or slower***
-    bne @done                   ;only take action once every 8 frames.
-    
-    jsr nsfx_mute               ;silence all channels.the purpose of this subroutine call is to silence channels that aren't used by any streams.
+    ;silence all channels.The purpose of this subroutine call is to silence channels that aren't used by any streams.
+    jsr nsfx_mute
 
     ldx #$00
 @loop:
     lda stream_status, x
-    and #$01                    ;check whether the stream is active
-    beq @endloop                ;if the channel isn't active, skip it
+    and #$01    ;check whether the stream is active
+    beq @endloop    ;if the channel isn't active, skip it
+    
+    ;add the tempo to the ticker total.  If there is a FF-> 0 transition, there is a tick
+    lda stream_ticker_total, x
+    clc
+    adc stream_tempo, x
+    sta stream_ticker_total, x
+    bcc @set_buffer    ;carry clear = no tick.  if no tick, we are done with this stream
+
+    dec stream_note_length_counter, x   ;else there is a tick. decrement the note length counter
+    bne @set_buffer    ;if counter is non-zero, our note isn't finished playing yet
+    
+    lda stream_note_length, x   ;else our note is finished. reload the note length counter
+    sta stream_note_length_counter, x
+
     jsr nsfx_fetch_byte
-    jsr nsfx_set_apu
+@set_buffer:
+    ;copy the current stream's sound data for the current frame into our temporary APU vars (nsfx_apu_ports)
+    jsr nsfx_set_temp_ports
 @endloop:
     inx
     cpx #$06
     bne @loop
 
-    lda #$00
-    sta nsfx_frame_counter
+    jsr nsfx_set_apu
 @done:
     rts
 .endproc
@@ -193,8 +219,9 @@ stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a
     sta sound_ptr
     lda stream_ptr_HI, x
     sta sound_ptr+1
-
+    
     ldy #$00
+@fetch:
     lda (sound_ptr), y
     bpl @note                   ;if < #$80, it's a Note
     cmp #$A0
@@ -219,7 +246,15 @@ stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a
     jmp @update_pointer         ;done
 @note_length:
     ;do Note Length stuff
-    jmp @update_pointer
+    and #%01111111              ;chop off bit7
+    sty nsfx_temp1             ;save Y because we are about to destroy it
+    tay
+    lda NoteLengthTable, y    ;get the note length count value
+    sta stream_note_length, x   ;save the note length in RAM so we can use it to refill the counter
+    sta stream_note_length_counter, x   ;stick it in our note length counter
+    ldy nsfx_temp1         ;restore Y
+    iny                     ;set index to next byte in the stream
+    jmp @fetch              ;fetch another byte
 @note:
     ;do Note stuff
     sty nsfx_temp1              ;save our index into the data stream
@@ -230,6 +265,9 @@ stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a
     lda NoteTable+1, y
     sta stream_note_HI, x
     ldy nsfx_temp1              ;restore data stream index
+
+    ;check if it's a rest
+    jsr nsfx_check_rest 
 @update_pointer:
     iny
     tya
@@ -243,29 +281,112 @@ stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a
 .endproc
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; NSFX_SET_APU
-; Writes a stream's data to the APU ports
-; input: 
+; NSFX_CHECK_REST
+; Determine if it is a rest or not.  It will set or clear the current
+; stream's rest flag accordingly.
+; input:
+;   X: stream number
+;   Y: data stream index
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.proc nsfx_check_rest
+    lda (sound_ptr), y  ;read the note byte again
+    cmp #rest
+    bne @not_rest
+    lda stream_status, x
+    ora #%00000010  ;set the rest bit in the status byte
+    bne @store  ;this will always branch.  bne is cheaper than a jmp.
+@not_rest:
+    lda stream_status, x
+    and #%11111101  ;clear the rest bit in the status byte
+@store:
+    sta stream_status, x
+    rts
+.endproc
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; NSFX_SET_TEMP_PORTS
+; Will copy a stream's sound data to the temporary apu variables
+; input:
 ;   X: stream number
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.proc nsfx_set_apu
+.proc nsfx_set_temp_ports
     lda stream_channel, x
     asl a
-    asl a                   
+    asl a
     tay
-    lda stream_vol_duty, x
-    sta SQ1_ENV, y
-    lda stream_note_LO, x
-    sta SQ1_LO, y
-    lda stream_note_HI, x
-    sta SQ1_HI, y
     
+    lda stream_vol_duty, x
+    sta nsfx_apu_ports, y       ;vol
+    
+    lda #$08
+    sta nsfx_apu_ports+1, y     ;sweep
+    
+    lda stream_note_LO, x
+    sta nsfx_apu_ports+2, y     ;period LO
+    
+    lda stream_note_HI, x
+    sta nsfx_apu_ports+3, y     ;period HI
+    
+    ;check the rest flag. if set, overwrite volume with silence value 
+    lda stream_status, x
+    and #%00000010
+    beq @done       ;if clear, no rest, so quit
     lda stream_channel, x
-    cmp #TRIANGLE
-    bcs @end                    ;if Triangle or Noise, skip this part
-    lda #%00001000              ;else, set negate flag in sweep unit to allow low noteson Squares
-    sta SQ1_SWEEP, y
-@end:
+    cmp #TRIANGLE   ;if triangle, silence with #$80
+    beq @tri        ;else, silence with #$30
+    lda #$30        
+    bne @store
+@tri:
+    lda #$80
+@store:    
+    sta nsfx_apu_ports, y
+@done:
+    rts    
+.endproc
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; NSFX_SET_APU
+; Copies the temporary RAM ports to the APU ports
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.proc nsfx_set_apu
+@square1:
+    lda nsfx_apu_ports+0
+    sta $4000
+    lda nsfx_apu_ports+1
+    sta $4001
+    lda nsfx_apu_ports+2
+    sta $4002
+    lda nsfx_apu_ports+3
+    cmp nsfx_sq1_old       ;compare to last write
+    beq @square2            ;don't write this frame if they were equal
+    sta $4003
+    sta nsfx_sq1_old       ;save the value we just wrote to $4003
+@square2:
+    lda nsfx_apu_ports+4
+    sta $4004
+    lda nsfx_apu_ports+5
+    sta $4005
+    lda nsfx_apu_ports+6
+    sta $4006
+    lda nsfx_apu_ports+7
+    cmp nsfx_sq2_old
+    beq @triangle
+    sta $4007
+    sta nsfx_sq2_old       ;save the value we just wrote to $4007
+@triangle:
+    lda nsfx_apu_ports+8
+    sta $4008
+    lda nsfx_apu_ports+10   ;there is no $4009, so we skip it
+    sta $400A
+    lda nsfx_apu_ports+11
+    sta $400B
+@noise:
+    lda nsfx_apu_ports+12
+    sta $400C
+    lda nsfx_apu_ports+14   ;there is no $400D, so we skip it
+    sta $400E
+    lda nsfx_apu_ports+15
+    sta $400F
     rts
 .endproc
 
@@ -280,9 +401,14 @@ song_headers:                   ;this is our pointer table.  Each entry is a poi
     .word song1_header          ;evil, demented notes
     .word song2_header          ;a sound effect.  Try playing it over the other songs.
     .word song3_header          ;a little chord progression.
+    .word song4_header          ;a new song taking advantage of note lengths and rests
+    .word song5_header          ;another sound effect played at a very fast tempo.
 
 .include "note_table.inc"
+.include "note_length_table.inc"
 .include "song0.s"              ;holds the data for song 0 (header and data streams)
 .include "song1.s"              ;holds the data for song 1
 .include "song2.s"
 .include "song3.s"
+.include "song4.s"
+.include "song5.s"
