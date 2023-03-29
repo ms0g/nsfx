@@ -11,7 +11,6 @@ nsfx_temp1:             .res 1  ;temporary variables
 nsfx_temp2:             .res 1
 sound_ptr:              .res 2
 
-
 ;reserve 6 bytes, one for each stream
 stream_curr_sound:      .res 6  ;current song/sfx loaded
 stream_status:          .res 6  ;status byte.   bit0: (1: stream enabled; 0: stream disabled)
@@ -67,11 +66,11 @@ stream_note_length_counter: .res 6
 ; NSFX_MUTE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_mute
-    lda #$30
+    lda #%00110000
     sta nsfx_apu_ports      ;set Square 1 volume to 0
     sta nsfx_apu_ports+4    ;set Square 2 volume to 0
     sta nsfx_apu_ports+12   ;set Noise volume to 0
-    lda #$80
+    lda #%10000000
     sta nsfx_apu_ports+8     ;silence Triangle
     rts
 .endproc 
@@ -334,10 +333,10 @@ stream_note_length_counter: .res 6
     lda stream_channel, x
     cmp #TRIANGLE   ;if triangle, silence with #$80
     beq @tri        ;else, silence with #$30
-    lda #$30        
+    lda #%00110000        
     bne @store
 @tri:
-    lda #$80
+    lda #%10000000
 @store:    
     sta nsfx_apu_ports, y
 @done:
