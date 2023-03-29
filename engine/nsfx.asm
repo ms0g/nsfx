@@ -5,8 +5,8 @@
 nsfx_apu_ports:         .res 16
 nsfx_disable_flag:      .res 1  ;a flag variable that keeps track of whether the sound engine is disabled or not. 
 nsfx_playing_flag:      .res 1  ;a flag that tells us if our sound is playing or not.
-nsfx_sq1_old:           .res 1  ;the last value written to $4003
-nsfx_sq2_old:           .res 1  ;the last value written to $4007
+nsfx_sq1_old:           .res 1  ;the last value written to SQ1_HI
+nsfx_sq2_old:           .res 1  ;the last value written to SQ2_HI
 nsfx_temp1:             .res 1  ;temporary variables
 nsfx_temp2:             .res 1
 sound_ptr:              .res 2
@@ -350,42 +350,42 @@ stream_note_length_counter: .res 6
 .proc nsfx_set_apu
 @square1:
     lda nsfx_apu_ports+0
-    sta $4000
+    sta SQ1_ENV
     lda nsfx_apu_ports+1
-    sta $4001
+    sta SQ1_SWEEP
     lda nsfx_apu_ports+2
-    sta $4002
+    sta SQ1_LO
     lda nsfx_apu_ports+3
     cmp nsfx_sq1_old       ;compare to last write
     beq @square2            ;don't write this frame if they were equal
-    sta $4003
-    sta nsfx_sq1_old       ;save the value we just wrote to $4003
+    sta SQ1_HI
+    sta nsfx_sq1_old       ;save the value we just wrote to SQ1_HI
 @square2:
     lda nsfx_apu_ports+4
-    sta $4004
+    sta SQ2_ENV
     lda nsfx_apu_ports+5
-    sta $4005
+    sta SQ2_SWEEP
     lda nsfx_apu_ports+6
-    sta $4006
+    sta SQ2_LO
     lda nsfx_apu_ports+7
     cmp nsfx_sq2_old
     beq @triangle
-    sta $4007
-    sta nsfx_sq2_old       ;save the value we just wrote to $4007
+    sta SQ2_HI
+    sta nsfx_sq2_old       ;save the value we just wrote to SQ2_HI
 @triangle:
     lda nsfx_apu_ports+8
-    sta $4008
+    sta TRI_CTRL
     lda nsfx_apu_ports+10   ;there is no $4009, so we skip it
-    sta $400A
+    sta TRI_LO
     lda nsfx_apu_ports+11
-    sta $400B
+    sta TRI_HI
 @noise:
     lda nsfx_apu_ports+12
-    sta $400C
+    sta NOISE_ENV
     lda nsfx_apu_ports+14   ;there is no $400D, so we skip it
-    sta $400E
+    sta NOI_RAND
     lda nsfx_apu_ports+15
-    sta $400F
+    sta NOI_COUNT
     rts
 .endproc
 
