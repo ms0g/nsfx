@@ -4,7 +4,8 @@ song5_header:
     .byte SFX_1         ;which stream
     .byte $01           ;status byte (stream enabled)
     .byte SQUARE_2      ;which channel
-    .byte $7F           ;initial volume (F) and duty (01)
+    .byte $70           ;initial duty (01)
+    .byte ve_short_staccato ;volume envelope
     .word song5_square2 ;pointer to stream
     .byte $FF           ;tempo..very fast tempo
     
