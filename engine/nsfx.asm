@@ -9,7 +9,7 @@ nsfx_sq1_old:           .res 1  ;the last value written to SQ1_HI
 nsfx_sq2_old:           .res 1  ;the last value written to SQ2_HI
 nsfx_temp1:             .res 1  ;temporary variables
 nsfx_temp2:             .res 1
-sound_ptr:              .res 2
+nsfx_ptr:               .res 2
 
 ;reserve 6 bytes, one for each stream
 stream_curr_sound:      .res 6  ;current song/sfx loaded
@@ -18,6 +18,8 @@ stream_channel:         .res 6  ;what channel is this stream playing on?
 stream_ptr_LO:          .res 6  ;low byte of pointer to data stream
 stream_ptr_HI:          .res 6  ;high byte of pointer to data stream
 stream_vol_duty:        .res 6  ;stream volume/duty settings
+stream_ve:              .res 6  ;current volume envelope
+stream_ve_index:        .res 6  ;current position within the volume envelope
 stream_note_LO:         .res 6  ;low 8 bits of period for the current note on a stream
 stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a stream 
 stream_tempo:           .res 6  ;the value to add to our ticker total each frame
@@ -88,41 +90,45 @@ stream_note_length_counter: .res 6
     asl a                       ;multiply by 2.  We are indexing into a table of pointers (words)
     tay
     lda song_headers, y         ;setup the pointer to our song header
-    sta sound_ptr
+    sta nsfx_ptr
     lda song_headers+1, y
-    sta sound_ptr+1
+    sta nsfx_ptr+1
 
     ldy #$00
-    lda (sound_ptr), y          ;stream counter
+    lda (nsfx_ptr), y          ;stream counter
     sta nsfx_temp2              
     iny
 @loop:
-    lda (sound_ptr), y          ;stream number
+    lda (nsfx_ptr), y          ;stream number
     tax                         ;stream number acts as our variable index
     iny
     
-    lda (sound_ptr), y          ;status byte. 1= enable, 0=disable
+    lda (nsfx_ptr), y          ;status byte. 1= enable, 0=disable
     sta stream_status, x
     beq @next_stream            ;if status byte is 0, stream disabled, so we are done
     iny
     
-    lda (sound_ptr), y          ;channel number
+    lda (nsfx_ptr), y          ;channel number
     sta stream_channel, x
     iny
     
-    lda (sound_ptr), y          ;initial duty and volume settings
+    lda (nsfx_ptr), y          ;initial duty and volume settings
     sta stream_vol_duty, x
     iny
+
+    lda (nsfx_ptr), y          ;initial volume settings
+    sta stream_ve, x
+    iny
     
-    lda (sound_ptr), y          ;pointer to stream data. Little endian, so low byte first
+    lda (nsfx_ptr), y          ;pointer to stream data. Little endian, so low byte first
     sta stream_ptr_LO, x
     iny
     
-    lda (sound_ptr), y
+    lda (nsfx_ptr), y
     sta stream_ptr_HI, x
     iny
 
-    lda (sound_ptr), y
+    lda (nsfx_ptr), y
     sta stream_tempo, x
 
     lda #$A0
@@ -130,6 +136,9 @@ stream_note_length_counter: .res 6
     
     lda #$01
     sta stream_note_length_counter,x
+
+    lda #$00
+    sta stream_ve_index, x
 @next_stream:
     iny
     
@@ -215,13 +224,13 @@ stream_note_length_counter: .res 6
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_fetch_byte
     lda stream_ptr_LO, x
-    sta sound_ptr
+    sta nsfx_ptr
     lda stream_ptr_HI, x
-    sta sound_ptr+1
+    sta nsfx_ptr+1
     
     ldy #$00
 @fetch:
-    lda (sound_ptr), y
+    lda (nsfx_ptr), y
     bpl @note                   ;if < #$80, it's a Note
     cmp #$A0
     bcc @note_length            ;else if < #$A0, it's a Note Length
@@ -265,6 +274,9 @@ stream_note_length_counter: .res 6
     sta stream_note_HI, x
     ldy nsfx_temp1              ;restore data stream index
 
+    lda #$00
+    sta stream_ve_index, x  ;reset the volume envelope.
+
     ;check if it's a rest
     jsr nsfx_check_rest 
 @update_pointer:
@@ -288,7 +300,7 @@ stream_note_length_counter: .res 6
 ;   Y: data stream index
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_check_rest
-    lda (sound_ptr), y  ;read the note byte again
+    lda (nsfx_ptr), y  ;read the note byte again
     cmp #rest
     bne @not_rest
     lda stream_status, x
@@ -314,8 +326,7 @@ stream_note_length_counter: .res 6
     asl a
     tay
     
-    lda stream_vol_duty, x
-    sta nsfx_apu_ports, y       ;vol
+    jsr nsfx_set_stream_volume  ;volume
     
     lda #$08
     sta nsfx_apu_ports+1, y     ;sweep
@@ -326,21 +337,65 @@ stream_note_length_counter: .res 6
     lda stream_note_HI, x
     sta nsfx_apu_ports+3, y     ;period HI
     
+    rts    
+.endproc
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; NSFX_SET_STREAM_VOLUME
+; input:
+;   X: stream number
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.proc nsfx_set_stream_volume
+    sty nsfx_temp1             ;save our index into nsfx_apu_ports (we are about to destroy y)
+    
+    lda stream_ve, x            ;which volume envelope?
+    asl a                       ;multiply by 2 because we are indexing into a table of addresses (words)
+    tay
+    lda volume_envelopes, y     ;get the low byte of the address from the pointer table
+    sta nsfx_ptr               ;put it into our pointer variable
+    lda volume_envelopes+1, y   ;get the high byte of the address
+    sta nsfx_ptr+1
+@read_ve:
+    ldy stream_ve_index, x      ;our current position within the volume envelope.
+    lda (nsfx_ptr), y          ;grab the value.
+    cmp #$FF
+    bne @set_vol                ;if not FF, set the volume
+    dec stream_ve_index, x      ;else if FF, go back one and read again
+    jmp @read_ve                ;  FF essentially tells us to repeat the last
+                                ;  volume value for the remainder of the note
+@set_vol:
+    sta nsfx_temp2             ;save our new volume value (about to destroy A)
+    
+    cpx #TRIANGLE               
+    bne @squares                ;if not triangle channel, go ahead
+    lda nsfx_temp2
+    bne @squares                ;else if volume not zero, go ahead (treat same as squares)
+    lda #%10000000
+    bmi @store_vol              ;else silence the channel with #$80
+@squares:
+    lda stream_vol_duty, x      ;get current vol/duty settings
+    and #$F0                    ;zero out the old volume
+    ora nsfx_temp2             ;OR our new volume in.
+@store_vol:
+    ldy nsfx_temp1             ;get our index into nsfx_apu_ports
+    sta nsfx_apu_ports, y       ;store the volume in our temp port
+    inc stream_ve_index, x      ;set our volume envelop index to the next position
+@rest_check:
     ;check the rest flag. if set, overwrite volume with silence value 
     lda stream_status, x
     and #%00000010
-    beq @done       ;if clear, no rest, so quit
+    beq @done                   ;if clear, no rest, so quit
     lda stream_channel, x
-    cmp #TRIANGLE   ;if triangle, silence with #$80
-    beq @tri        ;else, silence with #$30
+    cmp #TRIANGLE               ;if triangle, silence with #$80
+    beq @tri                    ;else, silence with #$30
     lda #%00110000        
-    bne @store
+    bne @store                  ;this always branches.  bne is cheaper than a jmp
 @tri:
     lda #%10000000
 @store:    
     sta nsfx_apu_ports, y
 @done:
-    rts    
+    rts  
 .endproc
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -405,6 +460,7 @@ song_headers:                   ;this is our pointer table.  Each entry is a poi
 
 .include "note_table.inc"
 .include "note_length_table.inc"
+.include "vol_envelopes.inc"
 .include "song0.s"              ;holds the data for song 0 (header and data streams)
 .include "song1.s"              ;holds the data for song 1
 .include "song2.s"
