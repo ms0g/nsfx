@@ -67,7 +67,7 @@ Wait2ndVBlank:               ; Wait for the second VBlank from the PPU
 Main:
     jsr nsfx_init
     
-    lda #$04
+    lda #$06
     sta current_song
     
     jsr nsfx_load

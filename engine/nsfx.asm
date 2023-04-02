@@ -10,6 +10,7 @@ nsfx_sq2_old:           .res 1  ;the last value written to SQ2_HI
 nsfx_temp1:             .res 1  ;temporary variables
 nsfx_temp2:             .res 1
 nsfx_ptr:               .res 2
+jmp_ptr:                .res 2
 
 ;reserve 6 bytes, one for each stream
 stream_curr_sound:      .res 6  ;current song/sfx loaded
@@ -235,23 +236,12 @@ stream_note_length_counter: .res 6
     cmp #$A0
     bcc @note_length            ;else if < #$A0, it's a Note Length
 @opcode:                        ;else it's an opcode
-    ;do Opcode stuff
-    cmp #$FF
-    bne @end
-    lda stream_status, x        ;if $FF, end of stream, so disable it and silence
-    and #%11111110
-    sta stream_status, x        ;clear enable flag in status byte
-    
-    lda stream_channel, x
-    cmp #TRIANGLE
-    beq @silence_tri            ;triangle is silenced differently from squares and noise
-    lda #%00110000              ;squares and noise silenced with #$30
-    bne @silence
-@silence_tri:
-    lda #%10000000              ;triangle silenced with #$80
-@silence:
-    sta stream_vol_duty, x      ;store silence value in the stream's volume variable.
-    jmp @update_pointer         ;done
+    jsr nsfx_opcode_launcher
+    iny                      ;next position in the data stream
+    lda stream_status, x
+    and #%00000001
+    bne @fetch               ;after our opcode is done, grab another byte unless the stream is disabled
+    jmp @end
 @note_length:
     ;do Note Length stuff
     and #%01111111              ;chop off bit7
@@ -313,6 +303,29 @@ stream_note_length_counter: .res 6
     sta stream_status, x
     rts
 .endproc
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; NSFX_OPCODE_LAUNCHER
+; Will read an address from the opcode jump table and indirect jump there.
+; input: 
+;   A: opcode byte
+;   Y: data stream position
+;   X: stream number
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.proc nsfx_opcode_launcher
+    sty nsfx_temp1         ;save y register, because we are about to destroy it
+    sec
+    sbc #$A0                ;turn our opcode byte into a table index by subtracting $A0
+    asl a                   ;multiply by 2 because we index into a table of addresses (words)
+    tay
+    lda nsfx_opcodes, y    ;get low byte of subroutine address
+    sta jmp_ptr
+    lda nsfx_opcodes+1, y  ;get high byte
+    sta jmp_ptr+1
+    ldy nsfx_temp1         ;restore our y register
+    iny                     ;set to next position in data stream (assume an argument)
+    jmp (jmp_ptr)           ;indirect jump to our opcode subroutine
+.endproc 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; NSFX_SET_TEMP_PORTS
@@ -444,12 +457,71 @@ stream_note_length_counter: .res 6
     rts
 .endproc
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; NSFX_OP_ENDSOUND
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.proc nsfx_op_endsound
+    lda stream_status, x    ;end of stream, so disable it and silence
+    and #%11111110
+    sta stream_status, x    ;clear enable flag in status byte
+    
+    lda stream_channel, x
+    cmp #TRIANGLE
+    beq @silence_tri        ;triangle is silenced differently from squares and noise
+    lda #$30                ;squares and noise silenced with #$30
+    bne @silence            ; (this will always branch.  bne is cheaper than a jmp)
+@silence_tri:
+    lda #$80                ;triangle silenced with #$80
+@silence:
+    sta stream_vol_duty, x  ;store silence value in the stream's volume variable.
 
-NUM_SONGS = $04                 ;if you add a new song, change this number.    
-                                ;headers.asm checks this number in its song_up and song_down subroutines
-                                ;to determine when to wrap around.
+    rts
+.endproc
 
-               
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; NSFX_OP_INFINITE_LOOP
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.proc nsfx_op_infinite_loop
+    lda (nsfx_ptr), y      ;read ptr LO from the data stream
+    sta stream_ptr_LO, x    ;update our data stream position
+    iny
+    lda (nsfx_ptr), y      ;read ptr HI from the data stream
+    sta stream_ptr_HI, x    ;update our data stream position
+    
+    sta nsfx_ptr+1         ;update the pointer to reflect the new position.
+    lda stream_ptr_LO, x
+    sta nsfx_ptr
+    ldy #$FF                ;after opcodes return, we do an iny.  Since we reset  
+                            ;the stream buffer position, we will want y to start out at 0 again.
+    rts
+.endproc
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; NSFX_OP_CHANGE_VE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.proc nsfx_op_change_ve
+    lda (nsfx_ptr), y      ;read the argument
+    sta stream_ve, x        ;store it in our volume envelope variable
+    lda #$00
+    sta stream_ve_index, x  ;reset volume envelope index to the beginning
+    rts
+.endproc
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; NSFX_OP_DUTY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.proc nsfx_op_duty
+    lda (nsfx_ptr), y
+    sta stream_vol_duty, x
+    rts
+.endproc
+
+nsfx_opcodes:
+    .word nsfx_op_endsound            ;$A0
+    .word nsfx_op_infinite_loop       ;$A1
+    .word nsfx_op_change_ve           ;$A2
+    .word nsfx_op_duty                ;$A3
+       
 song_headers:                   ;this is our pointer table.  Each entry is a pointer to a song header 
     .word song0_header          ;this is a silence song.  See song0.i for more details
     .word song1_header          ;evil, demented notes
@@ -457,13 +529,16 @@ song_headers:                   ;this is our pointer table.  Each entry is a poi
     .word song3_header          ;a little chord progression.
     .word song4_header          ;a new song taking advantage of note lengths and rests
     .word song5_header          ;another sound effect played at a very fast tempo.
+    .word song6_header
 
 .include "note_table.inc"
 .include "note_length_table.inc"
 .include "vol_envelopes.inc"
+.include "nsfx_opcodes.inc"
 .include "song0.s"              ;holds the data for song 0 (header and data streams)
 .include "song1.s"              ;holds the data for song 1
 .include "song2.s"
 .include "song3.s"
 .include "song4.s"
 .include "song5.s"
+.include "song6.inc"
