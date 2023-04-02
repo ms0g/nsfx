@@ -247,7 +247,7 @@ stream_note_length_counter: .res 6
     and #%01111111              ;chop off bit7
     sty nsfx_temp1             ;save Y because we are about to destroy it
     tay
-    lda NoteLengthTable, y    ;get the note length count value
+    lda note_length_table, y    ;get the note length count value
     sta stream_note_length, x   ;save the note length in RAM so we can use it to refill the counter
     sta stream_note_length_counter, x   ;stick it in our note length counter
     ldy nsfx_temp1         ;restore Y
@@ -258,9 +258,9 @@ stream_note_length_counter: .res 6
     sty nsfx_temp1              ;save our index into the data stream
     asl a
     tay
-    lda NoteTable, y
+    lda note_table, y
     sta stream_note_LO, x
-    lda NoteTable+1, y
+    lda note_table+1, y
     sta stream_note_HI, x
     ldy nsfx_temp1              ;restore data stream index
 
@@ -478,6 +478,7 @@ stream_note_length_counter: .res 6
     rts
 .endproc
 
+;;;;;;;;;;;;; NSFX OPCODE SUBROUTINES ;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; NSFX_OP_INFINITE_LOOP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -516,29 +517,8 @@ stream_note_length_counter: .res 6
     rts
 .endproc
 
-nsfx_opcodes:
-    .word nsfx_op_endsound            ;$A0
-    .word nsfx_op_infinite_loop       ;$A1
-    .word nsfx_op_change_ve           ;$A2
-    .word nsfx_op_duty                ;$A3
-       
-song_headers:                   ;this is our pointer table.  Each entry is a pointer to a song header 
-    .word song0_header          ;this is a silence song.  See song0.i for more details
-    .word song1_header          ;evil, demented notes
-    .word song2_header          ;a sound effect.  Try playing it over the other songs.
-    .word song3_header          ;a little chord progression.
-    .word song4_header          ;a new song taking advantage of note lengths and rests
-    .word song5_header          ;another sound effect played at a very fast tempo.
-    .word song6_header
-
 .include "note_table.inc"
 .include "note_length_table.inc"
 .include "vol_envelopes.inc"
 .include "nsfx_opcodes.inc"
-.include "song0.s"              ;holds the data for song 0 (header and data streams)
-.include "song1.s"              ;holds the data for song 1
-.include "song2.s"
-.include "song3.s"
-.include "song4.s"
-.include "song5.s"
-.include "song6.inc"
+.include "../songs/songs_all.inc"

@@ -1,6 +1,6 @@
 ;NTSC Period Lookup Table.  Thanks Celius!
 ;http://www.freewebs.com/the_bott/NotesTableNTSC.txt
-NoteTable:
+note_table:
     .word                                                                $07F1, $0780, $0713 ; A1-B1 ($00-$02)
     .word $06AD, $064D, $05F3, $059D, $054D, $0500, $04B8, $0475, $0435, $03F8, $03BF, $0389 ; C2-B2 ($03-$0E)
     .word $0356, $0326, $02F9, $02CE, $02A6, $027F, $025C, $023A, $021A, $01FB, $01DF, $01C4 ; C3-B3 ($0F-$1A)

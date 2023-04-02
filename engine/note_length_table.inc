@@ -1,4 +1,4 @@
-NoteLengthTable:
+note_length_table:
     .byte $01   ;32nd note
     .byte $02   ;16th note
     .byte $04   ;8th note
