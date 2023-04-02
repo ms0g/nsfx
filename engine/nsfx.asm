@@ -457,6 +457,7 @@ stream_note_length_counter: .res 6
     rts
 .endproc
 
+;;;;;;;;;;;;; NSFX OPCODE SUBROUTINES ;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; NSFX_OP_ENDSOUND
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -468,17 +469,16 @@ stream_note_length_counter: .res 6
     lda stream_channel, x
     cmp #TRIANGLE
     beq @silence_tri        ;triangle is silenced differently from squares and noise
-    lda #$30                ;squares and noise silenced with #$30
+    lda #%00110000          ;squares and noise silenced with #$30
     bne @silence            ; (this will always branch.  bne is cheaper than a jmp)
 @silence_tri:
-    lda #$80                ;triangle silenced with #$80
+    lda #%10000000  ;triangle silenced with #$80
 @silence:
     sta stream_vol_duty, x  ;store silence value in the stream's volume variable.
 
     rts
 .endproc
 
-;;;;;;;;;;;;; NSFX OPCODE SUBROUTINES ;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; NSFX_OP_INFINITE_LOOP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
