@@ -25,6 +25,7 @@ stream_note_LO:         .res 6  ;low 8 bits of period for the current note on a 
 stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a stream 
 stream_tempo:           .res 6  ;the value to add to our ticker total each frame
 stream_ticker_total:    .res 6  ;our running ticker total
+stream_loop1:           .res 6  ;loop counter variable (one for each stream)
 stream_note_length:     .res 6  
 stream_note_length_counter: .res 6
 
@@ -140,6 +141,9 @@ stream_note_length_counter: .res 6
 
     lda #$00
     sta stream_ve_index, x
+
+    lda #$00
+    sta stream_loop1, x
 @next_stream:
     iny
     
@@ -514,6 +518,21 @@ stream_note_length_counter: .res 6
 .proc nsfx_op_duty
     lda (nsfx_ptr), y
     sta stream_vol_duty, x
+    rts
+.endproc
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; NSFX_OP_LOOP1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.proc nsfx_op_loop1
+    dec stream_loop1, x     ;decrement the counter
+    lda stream_loop1, x     ;and check it
+    beq @last_iteration     ;if zero, we are done looping
+    jmp nsfx_op_infinite_loop ;if not zero, loop back
+@last_iteration:
+    iny                     ;skip the first byte of the address argument
+                            ; the second byte will be skipped automatically upon return
+                            ; (see se_fetch_byte.  There is an "iny" after "jsr se_opcode_launcher")
     rts
 .endproc
 
