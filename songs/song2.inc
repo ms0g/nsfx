@@ -12,4 +12,4 @@ song2_header:
     
 song2_square2:
     .byte eighth, D3, D2
-    .byte $FF
+    .byte endsound

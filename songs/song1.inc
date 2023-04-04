@@ -32,28 +32,30 @@ song1_header:
     
 song1_square1:
     .byte eighth
+    .byte set_loop1_counter, 14             ;repeat 14 times
+@loop:
     .byte A2, A2, A2, A3, A2, A3, A2, A3
-    .byte F3, F3, F3, F4, F3, F4, F3, F4
-    .byte A2, A2, A2, A3, A2, A3, A2, A3
-    .byte F3, F3, F3, F4, F3, F4, F3, F4
-    .byte E3, E3, E3, E4, E3, E4, E3, E4
-    .byte E3, E3, E3, E4, E3, E4, E3, E4
-    .byte Ds3, Ds3, Ds3, Ds4, Ds3, Ds4, Ds3, Ds4
-    .byte D3, D3, D3, D4, D3, D4, D3, D4
-    .byte C3, C3, C3, C4, C3, C4, C3, C4
-    .byte B2, B2, B2, B3, B2, B3, B2, B3
-    .byte As2, As2, As2, As3, As2, As3, As2, As3
-    .byte A2, A2, A2, A3, A2, A3, A2, A3
-    .byte Gs2, Gs2, Gs2, Gs3, Gs2, Gs3, Gs2, Gs3
-    .byte G2, G2, G2, G3, G2, G3, G2, G3
-    .byte $FF
+    .byte transpose                         ;the transpose opcode take a 2-byte argument
+    .word lookup_table                     ;which is the address of the lookup table
+    
+    .byte loop1                             ;finite loop (14 times)
+    .word @loop
+    
+    .byte loop                              ;infinite loop
+    .word song1_square1
+    
+lookup_table:
+    .byte 2, <-1, <-1, <-1, <-1, <-1, <-2
+    .byte <-1, <-1, 0, <-1, 8, <-8, 8       ;14 entries long, reverse order
 
 
     
 song1_square2:
-    .byte d_eighth
+    .byte sixteenth
     .byte rest    ;offset for delay effect
     .byte eighth
+@loop_point:
+    .byte rest
     .byte A4, C5, B4, C5, A4, C5, B4, C5
     .byte A4, C5, B4, C5, A4, C5, B4, C5
     .byte A4, C5, B4, C5, A4, C5, B4, C5
@@ -72,7 +74,8 @@ song1_square2:
     .byte G4, Fs4, G4, Fs4, G4, Fs4, G4, Fs4
     .byte eighth
     .byte G4, B4, D5, G5
-    .byte $FF
+    .byte loop
+    .word @loop_point
     
 song1_tri:
     .byte eighth
@@ -92,4 +95,5 @@ song1_tri:
     .byte sixteenth
     .byte G5, Fs5, G5, Fs5, G5, Fs5, G5, Fs5
     .byte G5, B5, D6, G6, B5, D6, B6, D7
-    .byte $FF
+    .byte loop
+    .word song1_tri
