@@ -7,6 +7,7 @@ song_headers:                   ;this is our pointer table.  Each entry is a poi
     .word song5_header          ;another sound effect played at a very fast tempo.
     .word song6_header
     .word song7_header
+    .word song8_header
 
 .include "song0.inc"              ;holds the data for song 0 (header and data streams)
 .include "song1.inc"              ;holds the data for song 1
@@ -16,3 +17,4 @@ song_headers:                   ;this is our pointer table.  Each entry is a poi
 .include "song5.inc"
 .include "song6.inc"
 .include "song7.inc"
+.include "song8.inc"

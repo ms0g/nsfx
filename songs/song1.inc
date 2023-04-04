@@ -26,9 +26,12 @@ song1_header:
     .byte $53           ;tempo
     
     .byte MUSIC_NOI     ;which stream
-    .byte $00           ;disabled.  Our load routine will skip the
-                        ;   rest of the reads if the status byte is 0.
-                        ;   We are disabling Noise because we haven't covered it yet.
+    .byte $01           ;status byte (stream enabled)
+    .byte NOISE     
+    .byte $30           ;initial duty_vol
+    .byte ve_drum_decay ;volume envelope
+    .word song1_noise   ;pointer to stream
+    .byte $53           ;tempo
     
 song1_square1:
     .byte eighth
@@ -97,3 +100,13 @@ song1_tri:
     .byte G5, B5, D6, G6, B5, D6, B6, D7
     .byte loop
     .word song1_tri
+
+
+song1_noise:
+    .byte eighth, $04                   ;this song only uses drum 04 (Mode-0, Sound Type 4) for a snare
+    .byte sixteenth, $04, $04, $04
+    .byte d_eighth, $04
+    .byte sixteenth, $04, $04, $04, $04
+    .byte eighth, $04, $04
+    .byte loop
+    .word song1_noise

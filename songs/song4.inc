@@ -26,9 +26,12 @@ song4_header:
     .byte $60           ;tempo
     
     .byte MUSIC_NOI     ;which stream
-    .byte $00           ;disabled.  Our load routine will skip the
-                        ;   rest of the reads if the status byte is 0.
-                        ;   We are disabling Noise because we haven't covered it yet.
+    .byte $01
+    .byte NOISE
+    .byte 30
+    .byte ve_drum_decay
+    .word song4_noise
+    .byte $60
                         
 song4_square1:
     .byte half, E4, quarter, G4, eighth, Fs4, E4, d_sixteenth, Eb4, E4, Fs4, t_quarter, rest, half, rest
@@ -54,3 +57,16 @@ song4_tri:
     .byte eighth, E4, Fs4, G4, A4, B3, C4, D4, Eb4, A3, E4, d_half, rest
     .byte loop
     .word song4_tri
+
+song4_noise:
+    .byte set_loop1_counter, 3
+@loop_point:
+    .byte half, $0D, $07, $0D
+    .byte quarter, $07, $15
+    .byte loop1
+    .word @loop_point
+    .byte quarter, $0D, $0D, $07, $07
+    .byte d_half, $05
+    .byte sixteenth, $12, $13, $14, $15
+    .byte loop
+    .word song4_noise
