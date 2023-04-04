@@ -264,6 +264,14 @@ stream_note_length_counter: .res 6
     jmp @fetch              ;fetch another byte
 @note:
     ;do Note stuff
+    sta nsfx_temp2             ;save the note value
+    lda stream_channel, x       ;what channel are we using?
+    cmp #NOISE                  ;is it the Noise channel?
+    bne @not_noise              
+    jsr nsfx_do_noise             ;if so, JSR to a subroutine to handle noise data
+    jmp @reset_ve                   ;and skip the note table when we return
+@not_noise:
+    lda nsfx_temp2     ;restore note value
     sty nsfx_temp1              ;save our index into the data stream
     clc
     adc stream_note_offset, x   ;add note offset
@@ -280,6 +288,9 @@ stream_note_length_counter: .res 6
 
     ;check if it's a rest
     jsr nsfx_check_rest 
+@reset_ve:    
+    lda #$00
+    sta stream_ve_index, x  
 @update_pointer:
     iny
     tya
@@ -460,11 +471,28 @@ stream_note_length_counter: .res 6
     sta TRI_HI
 @noise:
     lda nsfx_apu_ports+12
-    sta NOISE_ENV
+    sta NOI_ENV
     lda nsfx_apu_ports+14   ;there is no $400D, so we skip it
     sta NOI_RAND
     lda nsfx_apu_ports+15
     sta NOI_COUNT
+    rts
+.endproc
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; NSFX_DO_NOISE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.proc nsfx_do_noise
+    lda nsfx_temp2     ;restore the note value
+    and #%00010000      ;isolate bit4
+    beq @mode0          ;if it's clear, Mode-0, so no conversion
+@mode1:
+    lda nsfx_temp2     ;else Mode-1, restore the note value
+    ora #%10000000      ;set bit 7 to set Mode-1
+    sta nsfx_temp2
+@mode0:
+    lda nsfx_temp2
+    sta stream_note_LO, x   ;temporary port that gets copied to $400E
     rts
 .endproc
 
