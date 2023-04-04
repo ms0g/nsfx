@@ -10,6 +10,7 @@ nsfx_sq2_old:           .res 1  ;the last value written to SQ2_HI
 nsfx_temp1:             .res 1  ;temporary variables
 nsfx_temp2:             .res 1
 nsfx_ptr:               .res 2
+nsfx_ptr2:              .res 2
 jmp_ptr:                .res 2
 
 ;reserve 6 bytes, one for each stream
@@ -528,6 +529,15 @@ stream_note_length_counter: .res 6
 .endproc
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; NSFX_OP_SET_LOOP1_COUNTER
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.proc nsfx_op_set_loop1_counter
+    lda (nsfx_ptr), y      ;read the argument (# times to loop)
+    sta stream_loop1, x     ;store it in the loop counter variable
+    rts
+.endproc
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; NSFX_OP_LOOP1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_op_loop1
@@ -555,10 +565,34 @@ stream_note_length_counter: .res 6
 ; NSFX_OP_ADJUST_NOTE_OFFSET
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .proc nsfx_op_adjust_note_offset
-    lda [sound_ptr], y          ;read the argument (what value to add)
+    lda (nsfx_ptr), y          ;read the argument (what value to add)
     clc
     adc stream_note_offset, x   ;add it to the current offset
     sta stream_note_offset, x   ;and save.
+    rts
+.endproc
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; NSFX_OP_TRANSPOSE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.proc nsfx_op_transpose
+    lda (nsfx_ptr), y          ;read low byte of the pointer to our lookup table
+    sta nsfx_ptr2              ;store it in a new pointer variable
+    iny
+    lda (nsfx_ptr), y          ;read high byte of pointer to table
+    sta nsfx_ptr2+1
+ 
+    sty nsfx_temp1              ;save y because we are about to destroy it
+    lda stream_loop1, x         ;get loop counter, put it in Y
+    tay                         ;   this will be our index into the lookup table
+    dey                         ;subtract 1 because indexes start from 0.
+ 
+    lda (nsfx_ptr2), y         ;read a value from the table.
+    clc
+    adc stream_note_offset, x   ;add it to the note offset
+    sta stream_note_offset, x
+ 
+    ldy nsfx_temp1              ;restore Y
     rts
 .endproc
 

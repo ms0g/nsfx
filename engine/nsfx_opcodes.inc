@@ -6,7 +6,8 @@ nsfx_opcodes:
     .word nsfx_op_set_loop1_counter     ;$A4
     .word nsfx_op_loop1                 ;$A5
     .word nsfx_op_set_note_offset       ;$A6
-    .word nsfx_op_adjust_note_offset  ;$A7
+    .word nsfx_op_adjust_note_offset    ;$A7
+    .word nsfx_op_transpose             ;$A8
 
 ;these are aliases to use in the sound data.
 endsound            = $A0
@@ -17,3 +18,4 @@ set_loop1_counter   = $A4
 loop1               = $A5
 set_note_offset     = $A6
 adjust_note_offset  = $A7
+transpose           = $A8
