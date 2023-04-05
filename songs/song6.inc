@@ -124,16 +124,17 @@ song6_square2:
 song6_tri:
     .byte eighth
     .byte set_loop1_counter, 4              ;repeat 4 times
-@loop:
+@loop_point:
     .byte A3, A3, A4, A4, A3, A3, A4, A4    ;series of notes to repeat
     .byte adjust_note_offset, <-2            ;go down a step
     .byte loop1
-    .word @loop
+    .word @loop_point
     
     .byte set_note_offset, 0                ;after 4 repeats, reset note offset to 0.
     .byte loop                              ;infinite loop
     .word song6_tri                         
     ;21 bytes
+
 song6_noise:
     .byte set_loop1_counter, 3
 @loop_point1:
