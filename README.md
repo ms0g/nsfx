@@ -13,7 +13,7 @@ Nsfx is designed to give developers and musicians fine-grained control over the 
 
 ### Getting Started
 
-To get started with the nsfx, you will need to have an NES development environment set up. This typically involves installing a cross-compiler such as cc65, and an emulator such as FCEUX. Once you have these tools installed, you can download the nsfx source code from the gitHub repository and start integrating it into your project.
+To get started with the nsfx, you will need to have an NES development environment set up. This typically involves installing a cross-compiler such as cc65, and an emulator such as FCEUX. Once you have these tools installed, you can download the nsfx source code from the github repository and start integrating it into your project.
 
 Nsfx includes a demo program that demonstrate how to use the API to play music. The demo can be built using the included Makefile. The Makefile also provides targets for building a ROM file that can be run on an NES emulator or hardware.
 
