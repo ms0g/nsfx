@@ -27,7 +27,7 @@ stream_note_HI:         .res 6  ;high 3 bits of period for the current note on a
 stream_tempo:           .res 6  ;the value to add to our ticker total each frame
 stream_ticker_total:    .res 6  ;our running ticker total
 stream_loop1:           .res 6  ;loop counter variable (one for each stream)
-stream_note_offset:     .res 6   ;note offset
+stream_note_offset:     .res 6  ;note offset
 stream_note_length:     .res 6  
 stream_note_length_counter: .res 6
 
@@ -576,7 +576,7 @@ stream_note_length_counter: .res 6
 @last_iteration:
     iny                     ;skip the first byte of the address argument
                             ; the second byte will be skipped automatically upon return
-                            ; (see se_fetch_byte.  There is an "iny" after "jsr se_opcode_launcher")
+                            ; (see nsfx_fetch_byte.  There is an "iny" after "jsr nsfx_opcode_launcher")
     rts
 .endproc
 
