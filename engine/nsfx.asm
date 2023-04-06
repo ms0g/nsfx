@@ -36,6 +36,8 @@ stream_note_length_counter: .res 6
 .export nsfx_disable
 .export nsfx_load
 .export nsfx_play_frame
+.export nsfx_pause
+.export nsfx_unpause
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; NSFX_INIT
