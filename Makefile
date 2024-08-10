@@ -5,7 +5,7 @@ ASM=ca65
 LD=ld65
 LDFLAGS=-C $(CFG) 
 
-%.o : %.asm
+%.o : %.s
 	$(ASM) $<
 
 $(TARGET): $(OBJS)
